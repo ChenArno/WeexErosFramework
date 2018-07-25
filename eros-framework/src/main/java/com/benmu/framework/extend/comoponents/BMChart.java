@@ -2,16 +2,20 @@ package com.benmu.framework.extend.comoponents;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.webkit.ConsoleMessage;
+import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 import com.benmu.framework.extend.comoponents.view.BMWebView;
 import com.benmu.framework.utils.AssetsUtil;
@@ -38,6 +42,8 @@ public class BMChart extends WXComponent implements IWebView.OnPageListener {
     private BMWebView mWebView;
     private WebView mWeb;
     private String mCharInfo;
+    private String urlStyle;
+    private String useStyleName;
     private Date s;
     private boolean mLoadFinish;
 
@@ -77,6 +83,7 @@ public class BMChart extends WXComponent implements IWebView.OnPageListener {
         s = new Date();
         Log.e("bmChart", "start" + s.getTime());
         mWeb.loadUrl("file:///android_asset/bm-chart.html");
+        mWeb.addJavascriptInterface(new JsInteration(),"JsInteration");
         mWeb.setWebChromeClient(new WebChromeClient() {
 
             @Override
@@ -116,6 +123,16 @@ public class BMChart extends WXComponent implements IWebView.OnPageListener {
         executeSetOptions();
     }
 
+    @WXComponentProp(name = "useStyle")
+    public void setUseStyle(String info) {
+        this.urlStyle = info;
+    }
+
+    @WXComponentProp(name = "useStyleName")
+    public void setUseStyleName(String info) {
+        this.useStyleName = info;
+    }
+
     @JSMethod
     public void setOptions(String info) {
         this.mCharInfo = info;
@@ -128,16 +145,45 @@ public class BMChart extends WXComponent implements IWebView.OnPageListener {
         Date e = new Date();
         Log.e("bmChart", "finsh" + e.getTime() + "耗时" + (e.getTime() - s.getTime()));
         mLoadFinish = true;
-        executeSetOptions();
+//        executeSetOptions();
+        executeJsCallback();
     }
 
 
     public void executeSetOptions() {
         if (!mLoadFinish) return;
         if (!TextUtils.isEmpty(mCharInfo)) {
-            Log.e("options",">>>>>>>>"+mCharInfo);
-            mWeb.loadUrl("javascript:setOption(" + mCharInfo + ")");
+            Log.e("options", ">>>>>>>>" + mCharInfo);
+            mWeb.loadUrl("javascript:setOption(" + mCharInfo + ",'"+useStyleName+"')");
             fireEvent("finish");
+        }
+    }
+
+    public void executeJsCallback() {
+        if (!mLoadFinish) return;
+        if (!TextUtils.isEmpty(urlStyle)) {
+            Log.i("===>", "setUrl: "+urlStyle);
+            mWeb.post(new Runnable() {
+                @Override
+                public void run() {
+                    mWeb.loadUrl("javascript:setUrl('" + urlStyle + "')");
+                }
+            });
+        }else{
+            executeSetOptions();
+        }
+    }
+
+    public class JsInteration{
+        @JavascriptInterface
+        public void callMessage(){
+            Log.i("===>", "callMessage: ");
+            mWeb.post(new Runnable() {
+                @Override
+                public void run() {
+                    executeSetOptions();
+                }
+            });
         }
     }
 
